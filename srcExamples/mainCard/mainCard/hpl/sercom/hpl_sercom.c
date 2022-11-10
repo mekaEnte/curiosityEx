@@ -165,6 +165,8 @@ static struct usart_configuration _usarts[] = {
 
 static struct _usart_async_device *_sercom3_dev = NULL;
 
+static struct _usart_async_device *_sercom4_dev = NULL;
+
 static struct _usart_async_device *_sercom5_dev = NULL;
 
 static uint8_t _get_sercom_index(const void *const hw);
@@ -630,6 +632,10 @@ static void _sercom_init_irq_param(const void *const hw, void *dev)
 
 	if (hw == SERCOM3) {
 		_sercom3_dev = (struct _usart_async_device *)dev;
+	}
+
+	if (hw == SERCOM4) {
+		_sercom4_dev = (struct _usart_async_device *)dev;
 	}
 
 	if (hw == SERCOM5) {
@@ -2433,6 +2439,35 @@ void SERCOM3_2_Handler(void)
 void SERCOM3_3_Handler(void)
 {
 	_sercom_usart_interrupt_handler(_sercom3_dev);
+}
+
+/**
+ * \internal Sercom interrupt handler
+ */
+void SERCOM4_0_Handler(void)
+{
+	_sercom_usart_interrupt_handler(_sercom4_dev);
+}
+/**
+ * \internal Sercom interrupt handler
+ */
+void SERCOM4_1_Handler(void)
+{
+	_sercom_usart_interrupt_handler(_sercom4_dev);
+}
+/**
+ * \internal Sercom interrupt handler
+ */
+void SERCOM4_2_Handler(void)
+{
+	_sercom_usart_interrupt_handler(_sercom4_dev);
+}
+/**
+ * \internal Sercom interrupt handler
+ */
+void SERCOM4_3_Handler(void)
+{
+	_sercom_usart_interrupt_handler(_sercom4_dev);
 }
 
 /**

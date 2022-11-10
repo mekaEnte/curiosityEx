@@ -26,6 +26,14 @@ char bufferRcvAuxTwo[SIZE_BUFFER_RX];
 char ackFlagAuxTwo = 0;
 char cleanBufferFlagAuxTwo = 0;
 
+struct io_descriptor *ioSerialAuxOne;
+char flagTxAuxOne = NOBUSY;
+int idxRcvAuxOne = 0;
+char bufferTransAuxOne[SIZE_BUFFER_TX];
+char bufferRcvAuxOne[SIZE_BUFFER_RX];
+char ackFlagAuxOne = 0;
+char cleanBufferFlagAuxOne = 0;
+
 typedef enum {
 	LED0_NULL,
 	LED0_AUX_ON,
@@ -34,6 +42,7 @@ typedef enum {
 } cmd_aux_two_t;
 
 cmd_aux_two_t cmd_aux_two = LED0_NULL;
+cmd_aux_two_t cmd_aux_one = LED0_NULL;
 
 static void tranUsartHdlPc(const struct usart_async_descriptor *const io_descr) {
 	/* End transmision data */
@@ -81,7 +90,25 @@ static void rcvUsartHdlPc(const struct usart_async_descriptor *const io_descr) {
 					ackFlagPc = ACK;
 				}
 			}
-			result =strncmp(bufferRcvPC, "led0aux2=", 9);
+			
+			result = strncmp(bufferRcvPC, "led0aux1=", 9);
+			if (0 == result) {
+				tmpStr = getStrBetweenTwoStr(bufferRcvPC, "led0aux1=", "\r\n");
+				result = strcmp(tmpStr, "on");
+				if (0 == result) {
+					// send command led on aux1
+					cmd_aux_one = LED0_AUX_ON;
+					ackFlagPc = ACK;
+				}
+				result = strcmp(tmpStr, "off");
+				if (0 == result) {
+					// send command led off aux1
+					cmd_aux_one = LED0_AUX_OFF;
+					ackFlagPc = ACK;
+				}
+			}
+			
+			result = strncmp(bufferRcvPC, "led0aux2=", 9);
 			if (0 == result) {
 				tmpStr = getStrBetweenTwoStr(bufferRcvPC, "led0aux2=", "\r\n");
 				result = strcmp(tmpStr, "on");
@@ -135,8 +162,49 @@ static void rcvUsartHdlAuxTwo(const struct usart_async_descriptor *const io_desc
 			result = strncmp(bufferRcvAuxTwo, "ACK", 3);
 			if ( 0 == result) {
 				cmd_aux_two = LED0_NULL;
+				ackFlagAuxTwo = ACK;
 			}
 			cleanBufferFlagAuxTwo = 1;
+		}
+	}
+}
+
+static void tranUsartHdlAuxOne(const struct usart_async_descriptor *const io_descr) {
+	/* End transmision data */
+	flagTxAuxOne = NOBUSY;
+}
+
+static void rcvUsartHdlAuxOne(const struct usart_async_descriptor *const io_descr) {
+	/* Received data */
+	uint8_t dataRcv[1];
+	uint8_t numDataRcv = 0;
+	
+	//char *tmpStr;
+	
+	numDataRcv = io_read(ioSerialAuxOne, dataRcv, 1);
+	if (1 <= numDataRcv) {
+		if ( SIZE_BUFFER_RX <= idxRcvAuxOne) {
+			for (int i=1; SIZE_BUFFER_RX > i; i++) {
+				bufferRcvAuxOne[i-1] = bufferRcvAuxOne[i];
+			}
+			bufferRcvAuxOne[SIZE_BUFFER_RX-1] = dataRcv[0];
+			idxRcvAuxOne = SIZE_BUFFER_RX;
+			} else {
+			bufferRcvAuxOne[idxRcvAuxOne] = dataRcv[0];
+			idxRcvAuxOne++;
+		}
+		
+		// Study for some valid package
+		if ( (3 < idxRcvAuxOne) && ( 0x0A == bufferRcvAuxOne[idxRcvAuxOne-1] ) && ( 0x0D == bufferRcvAuxOne[idxRcvAuxOne-2] )) {
+			// process data
+			int result = 0;
+			ackFlagAuxOne = NOACK;
+			result = strncmp(bufferRcvAuxOne, "ACK", 3);
+			if ( 0 == result) {
+				cmd_aux_two = LED0_NULL;
+				ackFlagAuxOne = ACK;
+			}
+			cleanBufferFlagAuxOne = 1;
 		}
 	}
 }
@@ -156,6 +224,11 @@ int main(void)
 	usart_async_get_io_descriptor(&SERIAL_AUXTWO, &ioSerialAuxTwo);
 	usart_async_enable(&SERIAL_AUXTWO);
 	
+	usart_async_register_callback(&SERIAL_AUXONE, USART_ASYNC_TXC_CB, tranUsartHdlAuxOne);
+	usart_async_register_callback(&SERIAL_AUXONE, USART_ASYNC_RXC_CB, rcvUsartHdlAuxOne);
+	usart_async_get_io_descriptor(&SERIAL_AUXONE, &ioSerialAuxOne);
+	usart_async_enable(&SERIAL_AUXONE);
+	
 	/* Replace with your application code */
 	while (1) {
 		
@@ -173,6 +246,14 @@ int main(void)
 			}
 			idxRcvAuxTwo = 0;
 			cleanBufferFlagAuxTwo = 0;
+		}
+		
+		if (cleanBufferFlagAuxOne) {
+			for (int i=0; i < idxRcvAuxOne; i++) {
+				bufferRcvAuxOne[i] = 0;
+			}
+			idxRcvAuxOne = 0;
+			cleanBufferFlagAuxOne = 0;
 		}
 		
 		switch (ackFlagPc) {
@@ -211,6 +292,28 @@ int main(void)
 					io_write(ioSerialAuxTwo, (uint8_t *)bufferTransAuxTwo, sizeTransmit);
 				}
 				break;
+			case LED0_NULL:
+			default:
+			break;
+		}
+		
+		switch (cmd_aux_one) {
+			case LED0_AUX_ON:
+				if (NOBUSY == flagTxAuxOne) {
+					cmd_aux_one = WAIT_ACK;
+					int sizeTransmit = snprintf(bufferTransAuxOne, SIZE_BUFFER_TX, "led0aux1=on\r\n");
+					flagTxAuxOne = BUSY;
+					io_write(ioSerialAuxOne, (uint8_t *)bufferTransAuxOne, sizeTransmit);
+				}
+			break;
+			case LED0_AUX_OFF:
+				if (NOBUSY == flagTxAuxOne) {
+					cmd_aux_one = WAIT_ACK;
+					int sizeTransmit = snprintf(bufferTransAuxOne, SIZE_BUFFER_TX, "led0aux1=off\r\n");
+					flagTxAuxOne = BUSY;
+					io_write(ioSerialAuxOne, (uint8_t *)bufferTransAuxOne, sizeTransmit);
+				}
+			break;
 			case LED0_NULL:
 			default:
 			break;

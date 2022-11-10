@@ -23,15 +23,21 @@ extern "C" {
 
 #include <hal_usart_async.h>
 #include <hal_usart_async.h>
+#include <hal_usart_async.h>
 
 #include <hal_delay.h>
 
 extern struct usart_async_descriptor SERIAL_AUXTWO;
+extern struct usart_async_descriptor SERIAL_AUXONE;
 extern struct usart_async_descriptor SERIAL_PC;
 
 void SERIAL_AUXTWO_PORT_init(void);
 void SERIAL_AUXTWO_CLOCK_init(void);
 void SERIAL_AUXTWO_init(void);
+
+void SERIAL_AUXONE_PORT_init(void);
+void SERIAL_AUXONE_CLOCK_init(void);
+void SERIAL_AUXONE_init(void);
 
 void SERIAL_PC_PORT_init(void);
 void SERIAL_PC_CLOCK_init(void);

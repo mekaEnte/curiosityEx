@@ -14,6 +14,8 @@ extern "C" {
 
 void SERIAL_AUXTWO_example(void);
 
+void SERIAL_AUXONE_example(void);
+
 void SERIAL_PC_example(void);
 
 void delay_example(void);
