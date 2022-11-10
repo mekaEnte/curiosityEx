@@ -97,6 +97,7 @@ int main(void)
 					flagTx = BUSY;
 					io_write(ioUsart0, (uint8_t *)bufferTrans, sizeTransmit);
 				}
+				break;
 			case NOACK:
 				if ( NOBUSY == flagTx ) {
 					ackFlag = NOBUSY;
@@ -104,6 +105,7 @@ int main(void)
 					flagTx = BUSY;
 					io_write(ioUsart0, (uint8_t *)bufferTrans, sizeTransmit);
 				}
+				break;
 			default:
 				break;
 		}
